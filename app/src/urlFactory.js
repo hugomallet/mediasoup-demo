@@ -7,7 +7,7 @@ if (window.location.hostname === 'test.mediasoup.org') {
 }
 
 const hostname = window.location.hostname;
-const protocol = 'wss';
+const protocol = 'ws';
 
 export function getProtooUrl(params) {
 	const query = qs.stringify(params);
