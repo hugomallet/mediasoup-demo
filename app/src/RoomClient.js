@@ -1132,7 +1132,7 @@ export default class RoomClient {
 				headerExtensionOptions,
 				codec,
 				appData: {
-					source: 'video',
+					source: 'videoBis',
 				},
 				stopTracks: false,
 			});
