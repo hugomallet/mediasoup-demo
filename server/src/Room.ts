@@ -464,6 +464,12 @@ export class Room extends EnhancedEventEmitter<RoomEvents> {
 				otherPeer.notify('newPeer', { peer: peer.serialize() });
 
 				for (const producer of otherPeer.getProducers()) {
+					if (producer.appData.source === 'videoBis') {
+						// Dont consume videoBis,
+						// we just want to check that video still works.
+						console.log('VIDEO BIS');
+						continue;
+					}
 					void peer.consume({
 						producer,
 						consumerReplicas: this.#consumerReplicas,
@@ -571,6 +577,10 @@ export class Room extends EnhancedEventEmitter<RoomEvents> {
 			const otherPeers = this.getOtherPeers(peer);
 
 			for (const otherPeer of otherPeers) {
+				if (producer.appData.source === 'videoBis') {
+					console.log('new-producer VIDEO BIS');
+					continue;
+				}
 				void otherPeer.consume({
 					producer,
 					consumerReplicas: this.#consumerReplicas,
@@ -743,6 +753,10 @@ export class Room extends EnhancedEventEmitter<RoomEvents> {
 			const peers = this.getAllPeers();
 
 			for (const peer of peers) {
+				if (producer.appData.source === 'videoBis') {
+					console.log('new-producer VIDEO BIS');
+					continue;
+				}
 				void peer.consume({
 					producer,
 					consumerReplicas: this.#consumerReplicas,

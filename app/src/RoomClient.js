@@ -1092,7 +1092,52 @@ export default class RoomClient {
 				}
 			}
 
-			this._webcamProducer = await this._sendTransport.produce({
+			// Create an additional track using canvas.
+			const canvas = document.createElement('canvas');
+			canvas.width = 1080;
+			canvas.height = 720;
+			const context = canvas.getContext('2d');
+			context.fillStyle = 'yellow';
+			context.fillRect(0, 0, canvas.width, canvas.height);
+
+			let numb = 0;
+			let interval = setInterval(() => {
+				numb++;
+				context.fillStyle = 'yellow';
+				context.fillRect(0, 0, canvas.width, canvas.height);
+				context.font = "200px serif";
+				context.fillStyle = "black";
+				context.fillText(numb, 200, 200);
+			}, 1000);
+
+			canvas.style = "position: absolute; top: 100px; left: 100px; transform: scale(.2)"
+			document.body.appendChild(canvas);
+
+			const ms = canvas.captureStream(30);
+			const trackBis = ms.getVideoTracks()[0];
+
+			this.__canvas = canvas;
+			this.__context = context;
+			this.__interval === interval;
+			this.__ms = ms;
+			this.__trackBis = trackBis;
+
+			// Produce both tracks.
+			// At this moment, ws message is sent to server to create both producers
+			// but server will delay the 2nd producer creation by 10s.
+			const bisProducerPromise = this._sendTransport.produce({
+				track: trackBis,
+				encodings,
+				codecOptions,
+				headerExtensionOptions,
+				codec,
+				appData: {
+					source: 'video',
+				},
+				stopTracks: false,
+			});
+
+			const _webcamProducerPromise = this._sendTransport.produce({
 				track,
 				encodings,
 				codecOptions,
@@ -1101,7 +1146,25 @@ export default class RoomClient {
 				appData: {
 					source: 'video',
 				},
+				stopTracks: false,
 			});
+
+			this.__bisProducer = await bisProducerPromise;
+
+			// Close the bisProducer after 5 seconds.
+			// There is a 10s delay on the second producer creation on server side
+			// So the bisProducer is closed on server side before the webcamProducer is created
+			// is created on server side. But both run on client side yet.
+			await new Promise(resolve => setTimeout(resolve, 5000));
+
+			this._protoo.notify('closeProducer', {
+				producerId: this.__bisProducer.id,
+			});
+
+			this._webcamProducer = await _webcamProducerPromise;
+
+			this.__bisProducer.close();
+			this.__bisProducer = null;
 
 			if (this._e2eKey && e2e.isSupported()) {
 				e2e.setupSenderTransform(this._webcamProducer.rtpSender);
@@ -1150,10 +1213,26 @@ export default class RoomClient {
 		store.dispatch(stateActions.setWebcamInProgress(false));
 	}
 
+	disableBis() {
+		logger.debug('disableBis()');
+
+		this.__trackBis.stop();
+		clearInterval(this.__interval);
+		document.body.removeChild(this.__canvas);
+
+		this.__ms = null;
+		this.__canvas = null;
+		this.__context = null;
+		this.__interval = null;
+		this.__trackBis = null;
+	}
+
 	disableWebcam() {
 		logger.debug('disableWebcam()');
 
 		if (!this._webcamProducer) return;
+
+		this.disableBis();
 
 		this._webcamProducer.close();
 

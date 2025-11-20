@@ -653,11 +653,16 @@ export class Peer extends EnhancedEventEmitter<PeerEvents> {
 		});
 	}
 
+	__timeout = 0;
+
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async handleProtooNotification(
 		notification: TypedProtooNotificationFromPeer
 	): Promise<void> {
 		const { method, data } = notification;
+
+		// Introduce a delay to simulate network
+		await new Promise((r) => { setTimeout(r, 30); });
 
 		switch (method) {
 			case 'closeProducer': {
@@ -759,6 +764,8 @@ export class Peer extends EnhancedEventEmitter<PeerEvents> {
 	): Promise<void> {
 		const { method, data, accept, reject } = request;
 
+		await new Promise((r) => { setTimeout(r, 30); });
+
 		switch (method) {
 			case 'getRouterRtpCapabilities': {
 				this.emit('get-router-rtp-capabilities', routerRtpCapabilities => {
@@ -843,6 +850,13 @@ export class Peer extends EnhancedEventEmitter<PeerEvents> {
 
 			case 'produce': {
 				this.assertJoined();
+
+				console.log({ timeout: this.__timeout });
+
+				await new Promise((r) => { setTimeout(r, this.__timeout); });
+
+				// Force 10s delay at every second producer created.
+				this.__timeout = this.__timeout === 0 ? 10000 : 0;
 
 				const { transportId, kind, rtpParameters, appData } = data;
 				const { source } = appData;
